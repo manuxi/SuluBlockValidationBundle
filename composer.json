@@ -1,0 +1,56 @@
+{
+    "name": "manuxi/sulu-block-validation-bundle",
+    "type": "symfony-bundle",
+    "description": "Sulu admin forms: mandatory fields and block entries are only checked where their visibleCondition shows them",
+    "license": "MIT",
+    "keywords": [
+        "sulu",
+        "suluCms",
+        "validation",
+        "forms",
+        "visibleCondition",
+        "json-schema"
+    ],
+    "authors": [
+        {
+            "name": "Manuel Bertrams",
+            "email": "manu@bytefresser.de"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "sulu/sulu": "^3.0",
+        "symfony/console": "^6.4 || ^7.0",
+        "symfony/dependency-injection": "^6.4 || ^7.0",
+        "symfony/framework-bundle": "^6.4 || ^7.0"
+    },
+    "suggest": {
+        "opis/json-schema": "Needed for the --check option of sulu:block-validation:schema"
+    },
+    "require-dev": {
+        "opis/json-schema": "^2.3",
+        "phpunit/phpunit": "^9.6 || ^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Manuxi\\SuluBlockValidationBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Manuxi\\SuluBlockValidationBundle\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": [
+            "@phpunit"
+        ],
+        "phpunit": "vendor/bin/phpunit"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true,
+            "symfony/flex": true
+        }
+    }
+}

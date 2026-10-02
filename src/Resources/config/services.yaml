@@ -1,0 +1,6 @@
+services:
+    # the template form metadata exists in the admin context only
+    Manuxi\SuluBlockValidationBundle\Command\FormSchemaCommand:
+        arguments:
+            $loader: '@?sulu_admin.template_form_metadata_loader'
+        tags: ['console.command']
