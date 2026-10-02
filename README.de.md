@@ -35,9 +35,66 @@ Es ersetzt die Klasse von `sulu_admin.schema_metadata_provider` (nur im Admin-Ko
 
 Eine Bedingung, die das Bundle nicht versteht, lässt das Feld wie bisher Pflicht sein. Nichts wird versehentlich lockerer. Siehe [die unterstützten Bedingungen](docs/conditions.de.md).
 
+### Beispiel
+
+Ein Block, der je nach Auswahl Pakete oder eine Vergleichstabelle zeigt. Die Felder der Tabelle sind Pflicht und nur für die Tabelle sichtbar:
+
+```xml
+<property name="select_view" type="single_select">
+    <params>
+        <param name="default_value" value="plans"/>
+        <param name="values" type="collection">
+            <param name="plans"><meta><title lang="de">Pakete</title></meta></param>
+            <param name="table"><meta><title lang="de">Vergleichstabelle</title></meta></param>
+        </param>
+    </params>
+</property>
+
+<block name="plans" default-type="plan" minOccurs="1"
+       visibleCondition="__parent.select_view == 'plans'">
+    <types>
+        <type name="plan">
+            <properties>
+                <property name="name" type="text_line" mandatory="true"/>
+            </properties>
+        </type>
+    </types>
+</block>
+
+<property name="columns" type="text_area" mandatory="true"
+          visibleCondition="__parent.select_view == 'table'"/>
+
+<block name="rows" default-type="row" minOccurs="1"
+       visibleCondition="__parent.select_view == 'table'">
+    <types>
+        <type name="row">
+            <properties>
+                <property name="label" type="text_line" mandatory="true"/>
+            </properties>
+        </type>
+    </types>
+</block>
+```
+
+| Was der Redakteur tut | Ohne das Bundle | Mit dem Bundle |
+|---|---|---|
+| Darstellung „Pakete“, die (versteckten) `columns` sind leer, speichert | „Das Formular beinhaltet ungültige Werte“ | gespeichert |
+| Schaltet auf „Vergleichstabelle“: der Admin legt eine leere Zeile an (`minOccurs`). Schaltet zurück auf „Pakete“, speichert | „Das Formular beinhaltet ungültige Werte“: die versteckte Zeile hat kein `label` | gespeichert |
+| Darstellung „Vergleichstabelle“, `columns` leer, speichert | Fehler am Feld | Fehler am Feld (sichtbare Felder bleiben Pflicht) |
+| Darstellung „Vergleichstabelle“, eine Zeile ohne `label`, speichert | Fehler am Feld | Fehler am Feld |
+
 ## 2. Blöcke mit ungültigen Feldern öffnen
 
 Ein zugeklappter Block versteckt seine Felder. Nach einem fehlgeschlagenen Speichern muss der Redakteur Block für Block öffnen, um das rote Feld zu finden, und Sulu zeigt nur eine Meldung. Mit dem (optionalen) JavaScript des Bundles **öffnet ein fehlgeschlagenes Speichern genau die Blöcke, die einen Fehler enthalten**, Ebene für Ebene. Gültige Blöcke bleiben, wie sie sind. Siehe [Blöcke mit ungültigen Feldern öffnen](docs/expand-invalid-blocks.de.md) für das Verhalten, die Installation des JavaScripts und die Funktionsweise.
+
+## Kompatibilität
+
+| Bundle | Sulu | PHP | Symfony | Admin-JavaScript (Sulus eigene Versionen) |
+|---|---|---|---|---|
+| 1.1.x | 3.0.x (getestet mit 3.0.10) | 8.2+ (getestet mit 8.3) | 6.4, 7.x (getestet mit 7.4) | React 17, MobX 4, mobx-react 5 |
+| 1.0.x | 3.0.x (getestet mit 3.0.10) | 8.2+ (getestet mit 8.3) | 6.4, 7.x (getestet mit 7.4) | nicht Teil dieser Version |
+
+Die bedingte Validierung (PHP) baut auf dem `SchemaMetadataProvider` des Sulu-Admins auf, das Öffnen der Blöcke (JavaScript) auf `FieldBlocks` und `BlockCollection`. Das sind Interna von Sulu: Nach einem Sulu-Update die Tests des Bundles und die Prüfung der eigenen Formulare laufen lassen (siehe „Ein Formular prüfen“).
 
 ## Voraussetzungen
 
@@ -80,6 +137,10 @@ composer install
 vendor/bin/phpunit
 node src/Resources/js/expandInvalidBlocks/patch.test.mjs
 ```
+
+## Changelog
+
+Siehe [CHANGELOG.md](CHANGELOG.md) (auf Englisch).
 
 ## Lizenz
 

@@ -35,9 +35,66 @@ It replaces the class of `sulu_admin.schema_metadata_provider` (admin context on
 
 A condition that the bundle does not understand leaves the field required as before. Nothing becomes more lax by accident. See [the supported conditions](docs/conditions.en.md).
 
+### Example
+
+A block that shows either packages or a comparison table, depending on a select. The fields of the table are mandatory and only visible for the table:
+
+```xml
+<property name="select_view" type="single_select">
+    <params>
+        <param name="default_value" value="plans"/>
+        <param name="values" type="collection">
+            <param name="plans"><meta><title lang="en">Packages</title></meta></param>
+            <param name="table"><meta><title lang="en">Comparison table</title></meta></param>
+        </param>
+    </params>
+</property>
+
+<block name="plans" default-type="plan" minOccurs="1"
+       visibleCondition="__parent.select_view == 'plans'">
+    <types>
+        <type name="plan">
+            <properties>
+                <property name="name" type="text_line" mandatory="true"/>
+            </properties>
+        </type>
+    </types>
+</block>
+
+<property name="columns" type="text_area" mandatory="true"
+          visibleCondition="__parent.select_view == 'table'"/>
+
+<block name="rows" default-type="row" minOccurs="1"
+       visibleCondition="__parent.select_view == 'table'">
+    <types>
+        <type name="row">
+            <properties>
+                <property name="label" type="text_line" mandatory="true"/>
+            </properties>
+        </type>
+    </types>
+</block>
+```
+
+| What the editor does | Without the bundle | With the bundle |
+|---|---|---|
+| Display "Packages", the (hidden) `columns` are empty, saves | "The form contains invalid values" | saved |
+| Switches to "Comparison table": the admin creates an empty row (`minOccurs`). Switches back to "Packages", saves | "The form contains invalid values": the hidden row has no `label` | saved |
+| Display "Comparison table", `columns` empty, saves | error at the field | error at the field (visible fields stay mandatory) |
+| Display "Comparison table", a row without `label`, saves | error at the field | error at the field |
+
 ## 2. Opening blocks with invalid fields
 
 A block that is collapsed hides its fields. After a failed save the editor has to open block after block to find the red field, and Sulu only shows a toast. With the (optional) JavaScript of the bundle, a failed save **opens exactly the blocks that contain an error**, one nesting level after the other. Valid blocks stay as they are. See [Opening blocks with invalid fields](docs/expand-invalid-blocks.en.md) for the behaviour, the installation of the JavaScript and how it works.
+
+## Compatibility
+
+| Bundle | Sulu | PHP | Symfony | Admin JavaScript (Sulu's own versions) |
+|---|---|---|---|---|
+| 1.1.x | 3.0.x (tested with 3.0.10) | 8.2+ (tested with 8.3) | 6.4, 7.x (tested with 7.4) | React 17, MobX 4, mobx-react 5 |
+| 1.0.x | 3.0.x (tested with 3.0.10) | 8.2+ (tested with 8.3) | 6.4, 7.x (tested with 7.4) | not part of this version |
+
+The conditional validation (PHP) builds on `SchemaMetadataProvider` of the Sulu admin, the opening of blocks (JavaScript) on `FieldBlocks` and `BlockCollection`. These are internals of Sulu: after a Sulu update, run the tests of the bundle and the check of your own forms (see "Checking a form").
 
 ## Requirements
 
@@ -80,6 +137,10 @@ composer install
 vendor/bin/phpunit
 node src/Resources/js/expandInvalidBlocks/patch.test.mjs
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
