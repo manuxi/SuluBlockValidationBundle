@@ -36,12 +36,13 @@ class ConditionalSchemaMetadataProviderTest extends TestCase
         $this->provider = new ConditionalSchemaMetadataProvider(new PropertyMetadataMapperRegistry($locator));
     }
 
-    private function field(string $name, bool $required, ?string $condition = null): FieldMetadata
+    private function field(string $name, bool $required, ?string $condition = null, ?string $disabledCondition = null): FieldMetadata
     {
         $field = new FieldMetadata($name);
         $field->setType('text_line');
         $field->setRequired($required);
         $field->setVisibleCondition($condition);
+        $field->setDisabledCondition($disabledCondition);
 
         return $field;
     }
@@ -134,6 +135,80 @@ class ConditionalSchemaMetadataProviderTest extends TestCase
         ]);
 
         $this->assertSame($expected, $this->isValid($schema, $data));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function disabledFieldCases(): iterable
+    {
+        yield 'enabled: the mandatory field is required' => [['locked' => false, 'view' => 'z'], false];
+        yield 'enabled: filled' => [['locked' => false, 'view' => 'z', 'name' => 'n'], true];
+        yield 'disabled: the mandatory field may be missing' => [['locked' => true, 'view' => 'z'], true];
+        yield 'disabled: an empty text is fine (no minLength)' => [['locked' => true, 'view' => 'z', 'name' => ''], true];
+        yield 'not set yet counts as enabled' => [['view' => 'z'], false];
+        yield 'enabled and visible: both required' => [['locked' => false, 'view' => 'a', 'name' => 'n'], false];
+        yield 'enabled and visible: all filled' => [['locked' => false, 'view' => 'a', 'name' => 'n', 'shownName' => 's'], true];
+        yield 'visible but disabled: nothing is required' => [['locked' => true, 'view' => 'a'], true];
+    }
+
+    /**
+     * @dataProvider disabledFieldCases
+     *
+     * @param array<string, mixed> $data
+     */
+    public function testDisabledFieldsAreNotRequired(array $data, bool $expected): void
+    {
+        $schema = $this->schemaOf([
+            $this->field('locked', false),
+            $this->field('view', false),
+            $this->field('name', true, null, '__parent.locked'),
+            $this->field('shownName', true, "__parent.view == 'a'", '__parent.locked'),
+        ]);
+
+        $this->assertSame($expected, $this->isValid($schema, $data));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function disabledSectionCases(): iterable
+    {
+        yield 'the section is disabled: the field may be missing' => [['sectionLock' => true], true];
+        yield 'the section is enabled: the field is required' => [['sectionLock' => false], false];
+        yield 'the section is enabled: filled' => [['sectionLock' => false, 'inSection' => 'i'], true];
+    }
+
+    /**
+     * @dataProvider disabledSectionCases
+     *
+     * @param array<string, mixed> $data
+     */
+    public function testFieldsInADisabledSectionAreNotRequired(array $data, bool $expected): void
+    {
+        $section = new SectionMetadata('lockedSection');
+        $section->setDisabledCondition('__parent.sectionLock');
+        $section->addItem($this->field('inSection', true));
+
+        $schema = $this->schemaOf([$this->field('sectionLock', false), $section]);
+
+        $this->assertSame($expected, $this->isValid($schema, $data));
+    }
+
+    public function testADisabledConditionThatIsNotUnderstoodLeavesTheFieldRequired(): void
+    {
+        $schema = $this->schemaOf([$this->field('unknown', true, null, "service('x').y")]);
+
+        $this->assertFalse($this->isValid($schema, []));
+        $this->assertTrue($this->isValid($schema, ['unknown' => 'u']));
+    }
+
+    public function testActiveSchema(): void
+    {
+        $this->assertNull(ConditionalSchemaMetadataProvider::activeSchema([], []));
+        $this->assertNotNull(ConditionalSchemaMetadataProvider::activeSchema([], ['__parent.a']));
+        $this->assertNull(ConditionalSchemaMetadataProvider::activeSchema(["__parent.a == 'x'"], ["service('x').y"]));
+        $this->assertNotNull(ConditionalSchemaMetadataProvider::activeSchema(["__parent.a == 'x'"], []));
     }
 
     /**

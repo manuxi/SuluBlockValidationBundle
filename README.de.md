@@ -9,16 +9,16 @@
 
 Zwei Korrekturen für das „Das Formular beinhaltet ungültige Werte“ im Sulu-Admin:
 
-1. Pflichtfelder und Blockeinträge werden nur dort geprüft, **wo ihre `visibleCondition` sie anzeigt** (PHP).
+1. Pflichtfelder und Blockeinträge werden nur dort geprüft, **wo ihre `visibleCondition` sie anzeigt und ihre `disabledCondition` sie nicht deaktiviert** (PHP).
 2. Nach einem fehlgeschlagenen Speichern **öffnen sich die Blöcke mit ungültigen Feldern**, damit die roten Markierungen sichtbar sind (Admin-JavaScript, optional).
 
 ## 1. Bedingte Validierung
 
 ### Das Problem
 
-Ein Formularfeld lässt sich mit einer `visibleCondition` verstecken, zum Beispiel das Feld „Spalten“ eines Blocks, das nur in der Darstellung „Tabelle“ sichtbar ist. Sulu führt trotzdem jedes Pflichtfeld als `required` im JSON-Schema, gegen das der Admin das Formular prüft. Die Folgen:
+Ein Formularfeld lässt sich mit einer `visibleCondition` verstecken, zum Beispiel das Feld „Spalten“ eines Blocks, das nur in der Darstellung „Tabelle“ sichtbar ist, oder es mit einer `disabledCondition` ausgrauen. Sulu führt trotzdem jedes Pflichtfeld als `required` im JSON-Schema, gegen das der Admin das Formular prüft. Die Folgen:
 
-- ein **Pflichtfeld einer anderen Darstellung** verhindert das Speichern, obwohl es niemand sieht,
+- ein **Pflichtfeld einer anderen Darstellung** oder ein **deaktiviertes**, das der Redakteur nicht ändern kann, verhindert das Speichern,
 - ein **leerer Text** in so einem Feld verletzt die Regel `minLength: 1`, die Sulu an jedes Pflicht-Textfeld hängt,
 - **Einträge eines versteckten Blocks** (der Admin legt sie beim Anzeigen wegen `minOccurs` an) bleiben versteckt zurück, und ihre Pflichtfelder blockieren das Speichern, nachdem der Redakteur zurückgeschaltet hat.
 
@@ -28,10 +28,10 @@ Der Admin meldet nur „Das Formular beinhaltet ungültige Werte“, und der Red
 
 Es ersetzt die Klasse von `sulu_admin.schema_metadata_provider` (nur im Admin-Kontext) durch eine, die solche Felder in bedingte Regeln übersetzt, `wenn <Bedingung>, dann <Pflicht>`:
 
-- ein **verstecktes Feld** darf fehlen oder leer sein,
-- ein **versteckter Block** wird gar nicht geprüft (weder seine Einträge noch deren Felder),
-- ein Feld in einem **versteckten Abschnitt** folgt der Bedingung des Abschnitts,
-- ein **sichtbares** Feld wird so streng geprüft wie bisher.
+- ein **verstecktes oder deaktiviertes Feld** darf fehlen oder leer sein,
+- ein **versteckter oder deaktivierter Block** wird gar nicht geprüft (weder seine Einträge noch deren Felder),
+- ein Feld in einem **versteckten oder deaktivierten Abschnitt** folgt den Bedingungen des Abschnitts,
+- ein **sichtbares und aktives** Feld wird so streng geprüft wie bisher.
 
 Eine Bedingung, die das Bundle nicht versteht, lässt das Feld wie bisher Pflicht sein. Nichts wird versehentlich lockerer. Siehe [die unterstützten Bedingungen](docs/conditions.de.md).
 
@@ -91,6 +91,7 @@ Ein zugeklappter Block versteckt seine Felder. Nach einem fehlgeschlagenen Speic
 
 | Bundle | Sulu | PHP | Symfony | Admin-JavaScript (Sulus eigene Versionen) |
 |---|---|---|---|---|
+| 1.2.x | 3.0.x (getestet mit 3.0.10) | 8.2+ (getestet mit 8.3) | 6.4, 7.x (getestet mit 7.4) | React 17, MobX 4, mobx-react 5 |
 | 1.1.x | 3.0.x (getestet mit 3.0.10) | 8.2+ (getestet mit 8.3) | 6.4, 7.x (getestet mit 7.4) | React 17, MobX 4, mobx-react 5 |
 | 1.0.x | 3.0.x (getestet mit 3.0.10) | 8.2+ (getestet mit 8.3) | 6.4, 7.x (getestet mit 7.4) | nicht Teil dieser Version |
 

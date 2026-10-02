@@ -15,10 +15,10 @@ use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\SchemaMetadata;
 
 /**
  * Sulu validates a form against a JSON schema in which every mandatory field is simply "required", even when the
- * field is hidden by its visibleCondition (or sits in a hidden section). A mandatory field of another display of a block
- * then stops the form from being saved.
+ * field is hidden by its visibleCondition, disabled by its disabledCondition (or sits in a hidden or disabled section).
+ * A mandatory field of another display of a block, or one that the editor cannot change, then stops the form from being saved.
  *
- * This provider turns such a field into a conditional requirement ("if the condition holds, then the field is required").
+ * This provider turns such a field into a conditional requirement ("if the field is shown and enabled, then it is required").
  * The conditions that Sulu's forms use are small expressions on the sibling fields of the same object:
  *
  *   __parent.view == 'table'    __parent.view != 'plans'    __parent.view in ['a', 'b']
@@ -50,7 +50,7 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
         try {
             $properties = [];
             $conditionals = [];
-            $this->collect($itemsMetadata, [], $properties, $conditionals, $root);
+            $this->collect($itemsMetadata, [], [], $properties, $conditionals, $root);
         } finally {
             --$this->depth;
         }
@@ -61,19 +61,24 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
     /**
      * @param ItemMetadata[] $items
      * @param list<string> $inherited visible conditions of the sections around the items
+     * @param list<string> $inheritedDisabled disabled conditions of the sections around the items
      * @param list<PropertyMetadata> $properties
      * @param list<IfThenElseMetadata> $conditionals
      */
-    private function collect(array $items, array $inherited, array &$properties, array &$conditionals, bool $root): void
+    private function collect(array $items, array $inherited, array $inheritedDisabled, array &$properties, array &$conditionals, bool $root): void
     {
         foreach ($items as $item) {
             $conditions = $inherited;
             if (null !== $item->getVisibleCondition()) {
                 $conditions[] = $item->getVisibleCondition();
             }
+            $disabled = $inheritedDisabled;
+            if (null !== $item->getDisabledCondition()) {
+                $disabled[] = $item->getDisabledCondition();
+            }
 
             if ($item instanceof SectionMetadata) {
-                $this->collect($item->getItems(), $conditions, $properties, $conditionals, $root);
+                $this->collect($item->getItems(), $conditions, $disabled, $properties, $conditionals, $root);
 
                 continue;
             }
@@ -83,7 +88,7 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
             $property = $this->propertyOf($item);
             // a block is a list of entries with mandatory fields of their own
             $isBlock = [] !== $item->getTypes();
-            $condition = ($property->isMandatory() || $isBlock) && [] !== $conditions ? self::conditionSchema($conditions, $root) : null;
+            $condition = ($property->isMandatory() || $isBlock) && ([] !== $conditions || [] !== $disabled) ? self::activeSchema($conditions, $disabled, $root) : null;
             if (null === $condition) {
                 $properties[] = $property;
 
@@ -91,8 +96,8 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
             }
 
             if ($isBlock) {
-                // A hidden block is not checked at all: the admin may have created entries while it was shown (minOccurs), and
-                // their mandatory fields would block saving although nobody can see them any more.
+                // A hidden or disabled block is not checked at all: the admin may have created entries while it was shown
+                // (minOccurs), and their mandatory fields would block saving although nobody can see (or change) them.
                 $properties[] = new PropertyMetadata($property->getName(), false, new RawSchemaMetadata(['type' => ['array', 'null']]));
                 $conditionals[] = new IfThenElseMetadata(
                     new SchemaMetadata([], [], [new RawSchemaMetadata($condition)]),
@@ -102,8 +107,9 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
                 continue;
             }
 
-            // Not visible: the field may be missing or empty (a mandatory text carries "minLength: 1" in its own schema, so the
-            // plain schema is that of the field without "mandatory"). Visible: the strict schema with "required" applies.
+            // Not visible, or disabled: the field may be missing or empty (a mandatory text carries "minLength: 1" in its own
+            // schema, so the plain schema is that of the field without "mandatory"). Visible and enabled: the strict schema
+            // with "required" applies.
             $optional = clone $item;
             $optional->setRequired(false);
             $properties[] = $this->propertyOf($optional);
@@ -122,6 +128,37 @@ class ConditionalSchemaMetadataProvider extends SchemaMetadataProvider
         }
 
         return new PropertyMetadata($field->getName(), $field->isRequired());
+    }
+
+    /**
+     * JSON schema that holds when the field is shown AND can be edited: all visible conditions hold and none of the disabled
+     * conditions holds. Null when there is no condition or one of them is not understood.
+     *
+     * @param list<string> $visible visibleCondition of the field and of the sections around it
+     * @param list<string> $disabled disabledCondition of the field and of the sections around it
+     * @param bool $root see conditionSchema()
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function activeSchema(array $visible, array $disabled, bool $root = false): ?array
+    {
+        $schemas = [];
+        if ([] !== $visible) {
+            $shown = self::conditionSchema($visible, $root);
+            if (null === $shown) {
+                return null;
+            }
+            $schemas[] = $shown;
+        }
+        foreach ($disabled as $condition) {
+            $schema = self::conditionSchema([$condition], $root);
+            if (null === $schema) {
+                return null;
+            }
+            $schemas[] = ['not' => $schema];
+        }
+
+        return [] === $schemas ? null : ['allOf' => $schemas];
     }
 
     /**

@@ -9,16 +9,16 @@
 
 Two fixes for the "The form contains invalid values" experience in the Sulu admin:
 
-1. Mandatory fields and block entries are only checked **where their `visibleCondition` shows them** (PHP).
+1. Mandatory fields and block entries are only checked **where their `visibleCondition` shows them and their `disabledCondition` does not disable them** (PHP).
 2. After a failed save, **blocks that contain an invalid field open up**, so the red marks are visible (admin JavaScript, optional).
 
 ## 1. Conditional validation
 
 ### The problem
 
-A form field can be hidden with a `visibleCondition`, for example the "columns" field of a block that is only shown for the display "table". Sulu still lists every mandatory field as `required` in the JSON schema the admin validates the form against. So:
+A form field can be hidden with a `visibleCondition`, for example the "columns" field of a block that is only shown for the display "table", or greyed out with a `disabledCondition`. Sulu still lists every mandatory field as `required` in the JSON schema the admin validates the form against. So:
 
-- a **mandatory field of another display** stops the form from being saved, although nobody can see it, and
+- a **mandatory field of another display**, or a **disabled** one that the editor cannot change, stops the form from being saved, and
 - an **empty text** in such a field violates the `minLength: 1` rule that Sulu attaches to every mandatory text field, and
 - **entries of a hidden block** (the admin creates them while the block is shown, because of `minOccurs`) stay behind, hidden, and their mandatory fields block saving after the editor switched back.
 
@@ -28,10 +28,10 @@ The admin only says "The form contains invalid values", and the editor cannot fi
 
 It replaces the class of `sulu_admin.schema_metadata_provider` (admin context only) with one that turns such fields into conditional rules, `if <condition> then <required>`:
 
-- a **hidden field** may be missing or empty,
-- a **hidden block** is not checked at all (neither its entries nor their fields),
-- a field in a **hidden section** follows the condition of the section,
-- a **visible** field is checked as strictly as before.
+- a **hidden or disabled field** may be missing or empty,
+- a **hidden or disabled block** is not checked at all (neither its entries nor their fields),
+- a field in a **hidden or disabled section** follows the conditions of the section,
+- a **visible and enabled** field is checked as strictly as before.
 
 A condition that the bundle does not understand leaves the field required as before. Nothing becomes more lax by accident. See [the supported conditions](docs/conditions.en.md).
 
@@ -91,6 +91,7 @@ A block that is collapsed hides its fields. After a failed save the editor has t
 
 | Bundle | Sulu | PHP | Symfony | Admin JavaScript (Sulu's own versions) |
 |---|---|---|---|---|
+| 1.2.x | 3.0.x (tested with 3.0.10) | 8.2+ (tested with 8.3) | 6.4, 7.x (tested with 7.4) | React 17, MobX 4, mobx-react 5 |
 | 1.1.x | 3.0.x (tested with 3.0.10) | 8.2+ (tested with 8.3) | 6.4, 7.x (tested with 7.4) | React 17, MobX 4, mobx-react 5 |
 | 1.0.x | 3.0.x (tested with 3.0.10) | 8.2+ (tested with 8.3) | 6.4, 7.x (tested with 7.4) | not part of this version |
 

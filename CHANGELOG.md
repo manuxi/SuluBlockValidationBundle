@@ -2,6 +2,13 @@
 
 All notable changes of this bundle. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), the versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-10-02
+
+### Added
+
+- `disabledCondition` is understood like `visibleCondition`: a mandatory field that is disabled, or sits in a disabled section, may be missing or empty, a disabled block is not checked at all. A field is only required while it is visible and enabled. A disabled condition that is not understood leaves the field required as before.
+- `ConditionalSchemaMetadataProvider::activeSchema()` combines the visible and the disabled conditions of a field and the sections around it.
+
 ## [1.1.1] - 2026-10-02
 
 ### Changed
