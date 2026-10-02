@@ -7,9 +7,14 @@
 
 [🇬🇧 English Version](README.md)
 
-Pflichtfelder und Blockeinträge in Sulu-Admin-Formularen werden nur dort geprüft, **wo ihre `visibleCondition` sie anzeigt**.
+Zwei Korrekturen für das „Das Formular beinhaltet ungültige Werte“ im Sulu-Admin:
 
-## Das Problem
+1. Pflichtfelder und Blockeinträge werden nur dort geprüft, **wo ihre `visibleCondition` sie anzeigt** (PHP).
+2. Nach einem fehlgeschlagenen Speichern **öffnen sich die Blöcke mit ungültigen Feldern**, damit die roten Markierungen sichtbar sind (Admin-JavaScript, optional).
+
+## 1. Bedingte Validierung
+
+### Das Problem
 
 Ein Formularfeld lässt sich mit einer `visibleCondition` verstecken, zum Beispiel das Feld „Spalten“ eines Blocks, das nur in der Darstellung „Tabelle“ sichtbar ist. Sulu führt trotzdem jedes Pflichtfeld als `required` im JSON-Schema, gegen das der Admin das Formular prüft. Die Folgen:
 
@@ -19,7 +24,7 @@ Ein Formularfeld lässt sich mit einer `visibleCondition` verstecken, zum Beispi
 
 Der Admin meldet nur „Das Formular beinhaltet ungültige Werte“, und der Redakteur findet das Feld nicht.
 
-## Was das Bundle macht
+### Was das Bundle macht
 
 Es ersetzt die Klasse von `sulu_admin.schema_metadata_provider` (nur im Admin-Kontext) durch eine, die solche Felder in bedingte Regeln übersetzt, `wenn <Bedingung>, dann <Pflicht>`:
 
@@ -29,6 +34,10 @@ Es ersetzt die Klasse von `sulu_admin.schema_metadata_provider` (nur im Admin-Ko
 - ein **sichtbares** Feld wird so streng geprüft wie bisher.
 
 Eine Bedingung, die das Bundle nicht versteht, lässt das Feld wie bisher Pflicht sein. Nichts wird versehentlich lockerer. Siehe [die unterstützten Bedingungen](docs/conditions.de.md).
+
+## 2. Blöcke mit ungültigen Feldern öffnen
+
+Ein zugeklappter Block versteckt seine Felder. Nach einem fehlgeschlagenen Speichern muss der Redakteur Block für Block öffnen, um das rote Feld zu finden, und Sulu zeigt nur eine Meldung. Mit dem (optionalen) JavaScript des Bundles **öffnet ein fehlgeschlagenes Speichern genau die Blöcke, die einen Fehler enthalten**, Ebene für Ebene. Gültige Blöcke bleiben, wie sie sind. Siehe [Blöcke mit ungültigen Feldern öffnen](docs/expand-invalid-blocks.de.md) für das Verhalten, die Installation des JavaScripts und die Funktionsweise.
 
 ## Voraussetzungen
 
@@ -46,7 +55,7 @@ Bundle in `config/bundles.php` eintragen (Symfony Flex macht das für dich):
 Manuxi\SuluBlockValidationBundle\SuluBlockValidationBundle::class => ['all' => true],
 ```
 
-Es gibt nichts zu konfigurieren. Admin-Cache leeren (`bin/adminconsole cache:clear`) und den Admin neu laden.
+Es gibt nichts zu konfigurieren. Admin-Cache leeren (`bin/adminconsole cache:clear`) und den Admin neu laden. Damit funktioniert die bedingte Validierung. Für das Öffnen der Blöcke mit Fehlern das JavaScript in den Admin-Build aufnehmen, siehe [die Installation](docs/expand-invalid-blocks.de.md#installation).
 
 ## Ein Formular prüfen
 
@@ -69,6 +78,7 @@ Die Prüfung nutzt dasselbe Schema, das der Admin an den Browser schickt, einsch
 ```bash
 composer install
 vendor/bin/phpunit
+node src/Resources/js/expandInvalidBlocks/patch.test.mjs
 ```
 
 ## Lizenz

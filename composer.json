@@ -1,7 +1,7 @@
 {
     "name": "manuxi/sulu-block-validation-bundle",
     "type": "symfony-bundle",
-    "description": "Sulu admin forms: mandatory fields and block entries are only checked where their visibleCondition shows them",
+    "description": "Sulu admin forms: mandatory fields and block entries are only checked where their visibleCondition shows them; blocks with invalid fields open after a failed save",
     "license": "MIT",
     "keywords": [
         "sulu",
@@ -9,7 +9,8 @@
         "validation",
         "forms",
         "visibleCondition",
-        "json-schema"
+        "json-schema",
+        "blocks"
     ],
     "authors": [
         {
@@ -43,9 +44,11 @@
     },
     "scripts": {
         "test": [
-            "@phpunit"
+            "@phpunit",
+            "@test-js"
         ],
-        "phpunit": "vendor/bin/phpunit"
+        "phpunit": "vendor/bin/phpunit",
+        "test-js": "node --no-warnings src/Resources/js/expandInvalidBlocks/patch.test.mjs"
     },
     "config": {
         "allow-plugins": {
